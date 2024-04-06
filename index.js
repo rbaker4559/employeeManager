@@ -53,9 +53,54 @@ const questions = [
     type: 'list',
     name: 'action',
     message: 'What would you like to do?',
-    choices: ['View All Departments', 'View All Roles', 'View All Employees', 'Add A Department', 'Add A Role', 'Add An Employee', 'Update An Employee Role'],
+    choices: ['View All Departments', 'View All Roles', 'View All Employees', 'Add A Department', 'Add A Role', 'Add An Employee', 'Update An Employee Role']
   },
 ];
+
+const addEmployeeQuestions = [
+  {
+    type: 'string',
+    name: 'firstName',
+    message: 'First name?'
+  },
+  {
+    type: 'string',
+    name: 'lastName',
+    message: 'Last name?'
+  },
+  {
+    type: 'list',
+    name: 'role',
+    message: 'Role?',
+    choices: ['Enterprise Account Executive', 'Account Manager', 'Staff Accountant', 'Finance Manager', 'Content Manager', 'Head of Marketing', 'Junior Full Stack Developer', 'Product Manager']
+  },
+  {
+    type: 'number',
+    name: 'managerID',
+    message: 'Manager ID?',
+  }
+];
+
+function addEmployee() {
+  inquirer.prompt(addEmployeeQuestions).then((answers) => {
+    const roleName = answers.role;
+    pool.query('SELECT id FROM role WHERE title = ?', roleName, (error, result) => {
+      if(error) {
+        console.error('Error retrieving role: ', error);
+        return;
+      }
+      const roleID = result[0].id;
+
+      pool.query('INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)', [answers.firstName, answers.lastName, roleID, answers.managerID], (error, result) => {
+        if (error) {
+          console.error('Error adding employee: ', error);
+          return;
+        }
+        console.log('Employee successfully added!');
+      });
+    });
+  });
+};
 
 
 inquirer
@@ -70,6 +115,9 @@ inquirer
         break;
       case 'View All Employees': 
         viewEmployees();
+        break;
+      case 'Add An Employee':
+        addEmployee();
         break;
     }
   })
