@@ -1,0 +1,7 @@
+{
+  "type": "module",
+  "dependencies": {
+    "inquirer": "^8.2.6",
+    "mysql2": "^3.9.3"
+  }
+}
