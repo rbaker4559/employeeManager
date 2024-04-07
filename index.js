@@ -20,6 +20,7 @@ function viewDepartments() {
       return;
     } 
     console.table(results);
+    init();
   })
 };
 
@@ -31,6 +32,7 @@ function viewRoles() {
       return;
     } 
     console.table(results);
+    init();
   })
 };
 
@@ -42,6 +44,7 @@ function viewEmployees() {
       return;
     } 
     console.table(results);
+    init();
   })
 };
 
@@ -57,6 +60,7 @@ const questions = [
   },
 ];
 
+//Questions for adding new employees
 const addEmployeeQuestions = [
   {
     type: 'string',
@@ -72,7 +76,7 @@ const addEmployeeQuestions = [
     type: 'list',
     name: 'role',
     message: 'Role?',
-    choices: ['Enterprise Account Executive', 'Account Manager', 'Staff Accountant', 'Finance Manager', 'Content Manager', 'Head of Marketing', 'Junior Full Stack Developer', 'Product Manager']
+    choices: []
   },
   {
     type: 'number',
@@ -81,28 +85,131 @@ const addEmployeeQuestions = [
   }
 ];
 
-function addEmployee() {
-  inquirer.prompt(addEmployeeQuestions).then((answers) => {
-    const roleName = answers.role;
-    pool.query('SELECT id FROM role WHERE title = ?', roleName, (error, result) => {
-      if(error) {
-        console.error('Error retrieving role: ', error);
-        return;
-      }
-      const roleID = result[0].id;
+//Fetches roles
+function fetchRoles (callback) {
+  pool.query('SELECT id FROM role', (error, result) => {
+    if (error) {
+      console.error('Error fetching roles: ', error);
+      return;
+    }
+    const IDs = result.map(role => role.id);
+    callback(IDs);
+  });
+};
 
-      pool.query('INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)', [answers.firstName, answers.lastName, roleID, answers.managerID], (error, result) => {
+//Adds new employees
+function addEmployee() {
+  fetchRoles((roles) => {
+    addEmployeeQuestions[2].choices = roles;
+
+    inquirer.prompt(addEmployeeQuestions).then((answers) => {
+      const roleTitle = answers.role;
+
+      pool.query('Select id FROM role WHERE title = ?', roleTitle, (error, result) => {
+        if (error) {
+          console.error('Error retrieving role ID: ', error);
+          return;
+        }
+        const roleID = result[0].id;
+
+        pool.query('INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)', [answers.firstName, answers.lastName, roleID, answers.managerID], (error, result) => {
+          if (error) {
+            console.error('Error adding employee: ', error);
+            return;
+          }
+          console.log('Role succesfully added!');
+          init();
+        });
+      });
+    });
+  });
+};
+
+//questions for new department
+const addDepartmentQuestions = [
+  {
+    type: 'string',
+    name: 'department',
+    message: 'Department name?'
+  }
+];
+
+//Adds new department
+function addDepartment() {
+  inquirer.prompt(addDepartmentQuestions).then((answers) => {
+      pool.query('INSERT INTO department (name) VALUES (?)', [answers.department], (error, result) => {
         if (error) {
           console.error('Error adding employee: ', error);
           return;
         }
-        console.log('Employee successfully added!');
+        console.log('Department successfully added!');
+        init();
+      });
+    });
+  };
+
+//Questions for adding a role
+const addRoleQuestions = [
+  {
+    type: 'string',
+    name: 'title',
+    message: 'Title?'
+  },
+  {
+    type: 'string',
+    name: 'salary',
+    message: 'Salary?'
+  },
+  {
+    type: 'list',
+    name: 'department',
+    message: 'Which department?',
+    choices: []
+  }
+];
+
+//Fetches roles
+function fetchDepartments (callback) {
+  pool.query('SELECT name FROM department', (error, result) => {
+    if (error) {
+      console.error('Error fetching departments: ', error);
+      return;
+    }
+    const departments = result.map(department => department.name);
+    callback(departments);
+  });
+};
+
+//Adds Roles
+function addRole() {
+  fetchDepartments((departments) => {
+    addRoleQuestions[2].choices = departments;
+
+    inquirer.prompt(addRoleQuestions).then((answers) => {
+      const departmentName = answers.department;
+
+      pool.query('SELECT id FROM department WHERE name = ?', departmentName, (error, result ) => {
+        if (error) {
+          console.error('Error retrieving department: ', error);
+          return;
+        }
+        const departmentID = result[0].id;
+
+        pool.query('INSERT INTO role (title, salary, department_id) VALUES (?, ?, ?)', [answers.title, answers.salary, departmentID], (error, result) => {
+          if (error) {
+            console.error('Error adding role: ', error);
+            return;
+          }
+          console.log('Role succesfully added!');
+          init();
+        });
       });
     });
   });
 };
 
 
+function init(){
 inquirer
   .prompt(questions)
   .then((answers) => {
@@ -119,6 +226,12 @@ inquirer
       case 'Add An Employee':
         addEmployee();
         break;
+      case 'Add A Department':
+        addDepartment();
+        break;
+      case 'Add A Role':
+        addRole();
+        break;
     }
   })
   .catch((error) => {
@@ -128,3 +241,6 @@ inquirer
       console.log(error);
     }
   });
+};
+
+init();
