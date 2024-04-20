@@ -12,7 +12,7 @@ const pool = mysql2.createPool({
 })
 
 
-//view all departments function
+// // //view all departments function
 function viewDepartments() {
   pool.query('SELECT * FROM department', (error, results) => {
     if (error) {
@@ -24,7 +24,7 @@ function viewDepartments() {
   })
 };
 
-//view roles function
+// // //view roles function
 function viewRoles() {
   pool.query('SELECT * FROM role', (error, results) => {
     if (error) {
@@ -36,7 +36,7 @@ function viewRoles() {
   })
 };
 
-//view employees function
+// // //view employees function
 function viewEmployees() {
   pool.query('SELECT * FROM employee', (error, results) => {
     if (error) {
@@ -60,7 +60,7 @@ const questions = [
   },
 ];
 
-//Questions for adding new employees
+// // //Questions for adding new employees
 const addEmployeeQuestions = [
   {
     type: 'string',
@@ -85,19 +85,19 @@ const addEmployeeQuestions = [
   }
 ];
 
-//Fetches roles
+// // //Fetches roles
 function fetchRoles (callback) {
-  pool.query('SELECT id FROM role', (error, result) => {
+  pool.query('SELECT title FROM role', (error, result) => {
     if (error) {
-      console.error('Error fetching roles: ', error);
+      console.error('Error fetching role titles: ', error);
       return;
     }
-    const IDs = result.map(role => role.id);
-    callback(IDs);
+    const roleTitles = result.map(role => role.title);
+    callback(roleTitles);
   });
 };
 
-//Adds new employees
+// // //Adds new employees
 function addEmployee() {
   fetchRoles((roles) => {
     addEmployeeQuestions[2].choices = roles;
@@ -111,6 +111,7 @@ function addEmployee() {
           return;
         }
         const roleID = result[0].id;
+        
 
         pool.query('INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)', [answers.firstName, answers.lastName, roleID, answers.managerID], (error, result) => {
           if (error) {
@@ -125,7 +126,7 @@ function addEmployee() {
   });
 };
 
-//questions for new department
+// // //questions for new department
 const addDepartmentQuestions = [
   {
     type: 'string',
@@ -134,7 +135,7 @@ const addDepartmentQuestions = [
   }
 ];
 
-//Adds new department
+// // //Adds new department
 function addDepartment() {
   inquirer.prompt(addDepartmentQuestions).then((answers) => {
       pool.query('INSERT INTO department (name) VALUES (?)', [answers.department], (error, result) => {
@@ -148,7 +149,7 @@ function addDepartment() {
     });
   };
 
-//Questions for adding a role
+// // //Questions for adding a role
 const addRoleQuestions = [
   {
     type: 'string',
@@ -168,7 +169,7 @@ const addRoleQuestions = [
   }
 ];
 
-//Fetches roles
+// //Fetches roles
 function fetchDepartments (callback) {
   pool.query('SELECT name FROM department', (error, result) => {
     if (error) {
@@ -180,7 +181,7 @@ function fetchDepartments (callback) {
   });
 };
 
-//Adds Roles
+// // //Adds Roles
 function addRole() {
   fetchDepartments((departments) => {
     addRoleQuestions[2].choices = departments;
@@ -208,6 +209,95 @@ function addRole() {
   });
 };
 
+// //Questions for Update Employee
+const updateEmployeeQuestions =   [{
+  type: 'list',
+  name: 'employeeFirstName',
+  message: 'Which employee would you like to update?',
+  choices: []
+},
+{
+  type: 'list',
+  name: 'newRole',
+  message: 'What is their new role?',
+  choices: []
+}
+];
+
+function fetchEmployees(callback) {
+  let employees, roles;
+
+  pool.query('SELECT first_name FROM employee', (error, result) => {
+    if (error) {
+      console.error('Error fetching employees: ', error);
+      return;
+    }
+    employees = result.map(obj => obj.first_name);
+
+    if (roles !== undefined) {
+      callback(employees, roles);
+    }
+  });
+
+  pool.query('SELECT title FROM role', (error, result) => {
+    if (error) {
+      console.error('Error fetching roles: ', error);
+      return;
+    }
+
+    roles = result.map(obj => obj.title);
+
+    if (employees !== undefined) {
+      callback(employees, roles);
+    }
+  });
+}
+
+
+//Updates Employees
+function updateEmployee() {
+  fetchEmployees((employees, roles) => {
+      updateEmployeeQuestions[0].choices = employees;
+      updateEmployeeQuestions[1].choices = roles;
+  
+
+      inquirer.prompt(updateEmployeeQuestions).then((answers) => {
+          
+      const employeeName = answers.employeeFirstName;
+      const newRole = answers.newRole;
+      console.log(employeeName);
+
+      pool.query('SELECT role_id FROM employee WHERE first_name = ?', employeeName, (error, result ) => {
+        if (error) {
+          console.error('Error retrieving department: ', error);
+          return;
+        }
+       
+        const currentRoleId = result[0].role_id;
+        console.log('currentRoleId: ', currentRoleId);
+      })
+
+      pool.query('SELECT id FROM role WHERE title = ?', newRole, (error, result) => {
+        if (error) {
+          console.error('Error retrieving ID: ', error);
+          return;
+        }
+
+        const newRoleId = result[0].id;
+
+        pool.query('UPDATE employee set role_id = ? WHERE first_name = ?', [newRoleId, employeeName], (error, result) => {
+          if (error) {
+            console.error('Error updating employee record: ', error);
+            return;
+          }
+          console.log('Update Success!');
+          init();
+        })
+
+    })
+  })
+})
+}
 
 function init(){
 inquirer
@@ -231,6 +321,9 @@ inquirer
         break;
       case 'Add A Role':
         addRole();
+        break;
+      case 'Update An Employee Role':
+        updateEmployee();
         break;
     }
   })
